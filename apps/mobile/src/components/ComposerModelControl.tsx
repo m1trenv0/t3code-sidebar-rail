@@ -1,4 +1,6 @@
 import type { ModelSelection, ProviderDriverKind } from "@t3tools/contracts";
+import { ComposerFavoriteFan } from "./ComposerFavoriteFan";
+import { useGT, useMessages } from "gt-react-native";
 import {
   buildTraitsTriggerDisplay,
   getPromptControlledTraits,
@@ -19,24 +21,31 @@ export function ComposerModelControl(props: {
   readonly disabled?: boolean;
   readonly size?: "regular" | "large";
   readonly iconOnly?: boolean;
+  readonly favorites: ReadonlyArray<ModelOption>;
+  readonly onSelectFavorite: (model: ModelOption) => void;
   readonly onPress: () => void;
 }) {
+  const gt = useGT();
+  const m = useMessages();
   const descriptors = resolveProviderOptionDescriptors({
     capabilities: props.modelOption?.capabilities,
     selections: props.selection?.options,
   });
   const promptTraits = getPromptControlledTraits(descriptors, props.prompt);
   const summary = props.provider
-    ? buildTraitsTriggerDisplay({
-        descriptors,
-        primarySelectDescriptorId: promptTraits.primarySelectDescriptor?.id ?? null,
-        ultrathinkPromptControlled: promptTraits.ultrathinkPromptControlled,
-        modelSelection: props.selection,
-        reportedModelSelection: props.reportedSelection,
-      }).label
+    ? buildTraitsTriggerDisplay(
+        {
+          descriptors,
+          primarySelectDescriptorId: promptTraits.primarySelectDescriptor?.id ?? null,
+          ultrathinkPromptControlled: promptTraits.ultrathinkPromptControlled,
+          modelSelection: props.selection,
+          reportedModelSelection: props.reportedSelection,
+        },
+        m,
+      ).label
     : "";
   const badge = props.modelOption?.providerBadge;
-  const label = props.modelOption?.label ?? props.selection?.model ?? "Choose model";
+  const label = props.modelOption?.label ?? props.selection?.model ?? gt("Choose model");
   const providerNameLabel = badge
     ? providerInstanceNameLabel({
         provider: props.modelOption?.providerDriver,
@@ -47,69 +56,83 @@ export function ComposerModelControl(props: {
     : null;
   const shortLabel = props.modelOption?.shortName ?? label;
   return (
-    <ComposerInlineControl
-      accessibilityLabel={[
-        "Model and reasoning settings",
-        label,
-        badge?.showBadge ? badge.displayName : null,
-        summary,
-      ]
-        .filter(Boolean)
-        .join(", ")}
-      size={props.size}
-      disabled={props.disabled}
-      emphasized
-      renderIcon={(size) =>
-        badge?.showBadge ? (
-          <ProviderInstanceIcon
-            iconUrl={props.modelOption?.providerIconUrl}
-            provider={props.modelOption?.providerDriver}
-            displayName={badge.displayName}
-            accentColor={badge.accentColor}
-            showBadge
-            surfaceColor={props.surfaceColor}
-            size={size}
-          />
-        ) : (
-          <ProviderIcon
-            iconUrl={props.modelOption?.providerIconUrl}
-            provider={props.modelOption?.providerDriver}
-            size={size}
-          />
-        )
-      }
-      label={providerNameLabel ?? shortLabel}
-      labelEllipsizeMode={providerNameLabel ? "middle" : undefined}
-      iconOnly={props.iconOnly}
-      suffixWidth={providerNameLabel ? 96 : undefined}
-      suffix={
-        providerNameLabel ? (
-          <Text
-            className={
-              props.size === "large"
-                ? "text-sm text-foreground-muted"
-                : "text-xs text-foreground-muted"
-            }
-            numberOfLines={1}
-          >
-            {shortLabel}
-            {summary ? ` · ${summary}` : ""}
-          </Text>
-        ) : summary ? (
-          <Text
-            className={
-              props.size === "large"
-                ? "text-sm text-foreground-muted"
-                : "text-xs text-foreground-muted"
-            }
-            numberOfLines={1}
-          >
-            {summary}
-          </Text>
-        ) : undefined
-      }
-      maxWidth="100%"
+    <ComposerFavoriteFan
+      models={props.favorites}
+      onSelect={props.onSelectFavorite}
       onPress={props.onPress}
-    />
+    >
+      {(gesture) => (
+        <ComposerInlineControl
+          {...(gesture
+            ? {
+                tapOrHold: gesture,
+                accessibilityHint: gt("Hold and slide to choose a favorite model"),
+              }
+            : {})}
+          accessibilityLabel={[
+            gt("Model and reasoning settings"),
+            label,
+            badge?.showBadge ? badge.displayName : null,
+            summary,
+          ]
+            .filter(Boolean)
+            .join(", ")}
+          size={props.size}
+          disabled={props.disabled}
+          emphasized
+          renderIcon={(size) =>
+            badge?.showBadge ? (
+              <ProviderInstanceIcon
+                iconUrl={props.modelOption?.providerIconUrl}
+                provider={props.modelOption?.providerDriver}
+                displayName={badge.displayName}
+                accentColor={badge.accentColor}
+                showBadge
+                surfaceColor={props.surfaceColor}
+                size={size}
+              />
+            ) : (
+              <ProviderIcon
+                iconUrl={props.modelOption?.providerIconUrl}
+                provider={props.modelOption?.providerDriver}
+                size={size}
+              />
+            )
+          }
+          label={providerNameLabel ?? shortLabel}
+          labelEllipsizeMode={providerNameLabel ? "middle" : undefined}
+          iconOnly={props.iconOnly}
+          suffixWidth={providerNameLabel ? 96 : undefined}
+          suffix={
+            providerNameLabel ? (
+              <Text
+                className={
+                  props.size === "large"
+                    ? "text-sm text-foreground-muted"
+                    : "text-xs text-foreground-muted"
+                }
+                numberOfLines={1}
+              >
+                {shortLabel}
+                {summary ? ` · ${summary}` : ""}
+              </Text>
+            ) : summary ? (
+              <Text
+                className={
+                  props.size === "large"
+                    ? "text-sm text-foreground-muted"
+                    : "text-xs text-foreground-muted"
+                }
+                numberOfLines={1}
+              >
+                {summary}
+              </Text>
+            ) : undefined
+          }
+          maxWidth="100%"
+          onPress={props.onPress}
+        />
+      )}
+    </ComposerFavoriteFan>
   );
 }
